@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+# Zola configuration for the Ferro ecosystem site at ferro.abyo.net.
+
+base_url = "https://ferro.abyo.net"
+title = "Ferro"
+description = "Production-grade Rust-native rewrites of JVM/Python data infrastructure."
+default_language = "en"
+theme = "apollo"
+compile_sass = true
+build_search_index = false
+generate_feeds = true
+feed_filenames = ["atom.xml"]
+minify_html = true
+author = "Youichi Uda"
+
+taxonomies = [{ name = "tags" }]
+
+[markdown]
+smart_punctuation = true
+external_links_target_blank = true
+external_links_no_referrer = true
+
+[markdown.highlighting]
+style = "class"
+light_theme = "github-light"
+dark_theme = "github-dark"
+
+[extra]
+toc = true
+use_cdn = false
+favicon = "/favicon.ico"
+theme = "toggle-auto"
+fancy_code = true
+repo_url = "https://github.com/youichi-uda/ferro-site/tree/main/content/"
+
+menu = [
+    { name = "/blog", url = "/blog", weight = 1 },
+    { name = "/crates", url = "/crates", weight = 2 },
+    { name = "/tags", url = "/tags", weight = 3 },
+]
+
+socials = [
+    { name = "github", url = "https://github.com/youichi-uda", icon = "github" },
+]
+
+stylesheets = []

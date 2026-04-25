@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# Zola build output.
+/public
+
+# OS / editor noise.
+.DS_Store
+.idea/
+.vscode/
+*.swp
