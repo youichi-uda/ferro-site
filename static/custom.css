@@ -1,0 +1,51 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Ferro custom overrides on top of the apollo theme. */
+
+/* ---------------------------------------------------------------------------
+ * Responsive tables
+ *
+ * Apollo's default <table> CSS is minimal — no overflow handling, no width
+ * cap. Blog posts that include long-cell tables (e.g. the launch post's
+ * "What's in the ecosystem today" matrix) end up either overflowing the
+ * page width or compressing into unreadable columns. Wrap the table in a
+ * horizontal-scrolling container, force cell text to wrap, and shrink the
+ * font slightly so the typical case fits without scroll.
+ * ------------------------------------------------------------------------- */
+
+article .body {
+  /* Ensure children never push the article wider than the page column. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+article .body table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 0.93rem;
+  margin: 1.2rem 0;
+}
+
+article .body table th,
+article .body table td {
+  vertical-align: top;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  /* Cap cell width so one long-text column does not eat the whole row. */
+  min-width: 8rem;
+  max-width: 22rem;
+}
+
+@media (max-width: 768px) {
+  article .body table {
+    font-size: 0.85rem;
+  }
+  article .body table th,
+  article .body table td {
+    min-width: 6rem;
+    padding: 5px 8px;
+  }
+}

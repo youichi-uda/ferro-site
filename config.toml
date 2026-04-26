@@ -43,4 +43,4 @@ socials = [
     { name = "github", url = "https://github.com/youichi-uda", icon = "github" },
 ]
 
-stylesheets = []
+stylesheets = ["custom.css"]
