@@ -206,9 +206,10 @@ under a Developer Certificate of Origin contributor flow — no CLA
 
 A tactical list of things that are still open:
 
-1. **Track A M&A is not closed.** FerroStream and adjacent products
-   are intended for acquisition; that is the Track A line. It is
-   not yet at the closing stage.
+1. **An acquisition track for FerroStream and adjacent products is
+   open but not closed.** FerroStream is the part of this work
+   intended for sale to a strategic buyer; conversations exist but
+   nothing has signed.
 2. **OMB benchmarks against real cloud are not yet public.**
    Synthetic benches show parity-or-better; the real EC2 13-hour
    workload run with the harness fixes is queued, not done.
