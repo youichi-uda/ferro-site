@@ -5,7 +5,7 @@ template = "section.html"
 
 Rust crates extracted from the Ferro ecosystem and published on
 crates.io under Apache-2.0. Source for all of them lives in the
-[`ferro-protocols`](https://github.com/youichi-uda/ferro-protocols)
+[`ferro-protocols`](https://github.com/abyo-software/ferro-protocols)
 mono-repo.
 
 ## Tier 1 — published
@@ -18,7 +18,7 @@ feature) `FsBlobStore` reference backends. Used as the storage
 abstraction under the OCI / Maven / Cargo crates below.
 
 - [Documentation on docs.rs](https://docs.rs/ferro-blob-store)
-- [Source](https://github.com/youichi-uda/ferro-protocols/tree/main/crates/ferro-blob-store)
+- [Source](https://github.com/abyo-software/ferro-protocols/tree/main/crates/ferro-blob-store)
 
 ### [`ferro-lumberjack`](https://crates.io/crates/ferro-lumberjack) `v0.1.0` (beta)
 
@@ -28,7 +28,7 @@ Extracted from production use in **FerroBeat** (Filebeat-compatible
 log shipper) and **FerroHeartbeat** (Heartbeat-compatible monitor).
 
 - [Documentation on docs.rs](https://docs.rs/ferro-lumberjack)
-- [Source](https://github.com/youichi-uda/ferro-protocols/tree/main/crates/ferro-lumberjack)
+- [Source](https://github.com/abyo-software/ferro-protocols/tree/main/crates/ferro-lumberjack)
 
 ### [`ferro-airflow-dag-parser`](https://crates.io/crates/ferro-airflow-dag-parser) `v0.0.1` (alpha)
 
@@ -39,7 +39,7 @@ Extracted from **FerroAir**, an Airflow-3-compatible Rust
 orchestrator.
 
 - [Documentation on docs.rs](https://docs.rs/ferro-airflow-dag-parser)
-- [Source](https://github.com/youichi-uda/ferro-protocols/tree/main/crates/ferro-airflow-dag-parser)
+- [Source](https://github.com/abyo-software/ferro-protocols/tree/main/crates/ferro-airflow-dag-parser)
 
 ### [`ferro-maven-layout`](https://crates.io/crates/ferro-maven-layout) `v0.0.1` (alpha)
 
@@ -50,7 +50,7 @@ an Axum HTTP router that mounts a `BlobStore` from
 `ferro-blob-store` at any URL prefix.
 
 - [Documentation on docs.rs](https://docs.rs/ferro-maven-layout)
-- [Source](https://github.com/youichi-uda/ferro-protocols/tree/main/crates/ferro-maven-layout)
+- [Source](https://github.com/abyo-software/ferro-protocols/tree/main/crates/ferro-maven-layout)
 
 ### [`ferro-cargo-registry-server`](https://crates.io/crates/ferro-cargo-registry-server) `v0.0.1` (alpha)
 
@@ -61,7 +61,7 @@ protocol. `/config.json`, sparse index entries,
 publish / yank / unyank / owners API, and an Axum router.
 
 - [Documentation on docs.rs](https://docs.rs/ferro-cargo-registry-server)
-- [Source](https://github.com/youichi-uda/ferro-protocols/tree/main/crates/ferro-cargo-registry-server)
+- [Source](https://github.com/abyo-software/ferro-protocols/tree/main/crates/ferro-cargo-registry-server)
 
 ### [`ferro-oci-server`](https://crates.io/crates/ferro-oci-server) `v0.0.1` (alpha)
 
@@ -74,7 +74,7 @@ server-side primitive crate. The `v0.1.0` gate is passing the
 upstream `opencontainers/distribution-spec` conformance suite.
 
 - [Documentation on docs.rs](https://docs.rs/ferro-oci-server)
-- [Source](https://github.com/youichi-uda/ferro-protocols/tree/main/crates/ferro-oci-server)
+- [Source](https://github.com/abyo-software/ferro-protocols/tree/main/crates/ferro-oci-server)
 
 ## Tier 2 — planned
 
@@ -90,11 +90,11 @@ roughly the order they ship:
 - `ferro-keycloak-realm-import` — Keycloak realm JSON 26.x parser/writer
 - `ferro-logstash-dsl-parser` — Logstash `.conf` DSL parser
 
-See [`docs/roadmap.md`](https://github.com/youichi-uda/ferro-protocols/blob/main/docs/roadmap.md)
+See [`docs/roadmap.md`](https://github.com/abyo-software/ferro-protocols/blob/main/docs/roadmap.md)
 for the full schedule.
 
 ## License
 
 All crates above are **Apache License 2.0**. Contributor flow is
-[DCO](https://github.com/youichi-uda/ferro-protocols/blob/main/CONTRIBUTING.md#developer-certificate-of-origin)
+[DCO](https://github.com/abyo-software/ferro-protocols/blob/main/CONTRIBUTING.md#developer-certificate-of-origin)
 (no CLA).

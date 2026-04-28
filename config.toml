@@ -11,7 +11,7 @@ build_search_index = false
 generate_feeds = true
 feed_filenames = ["atom.xml"]
 minify_html = true
-author = "Youichi Uda"
+author = "abyo software 合同会社 (abyo software LLC)"
 
 taxonomies = [{ name = "tags" }]
 
@@ -31,7 +31,7 @@ use_cdn = false
 favicon = "/favicon.ico"
 theme = "toggle-auto"
 fancy_code = true
-repo_url = "https://github.com/youichi-uda/ferro-site/tree/main/content/"
+repo_url = "https://github.com/abyo-software/ferro-site/tree/main/content/"
 
 menu = [
     { name = "/blog", url = "/blog", weight = 1 },
@@ -40,7 +40,7 @@ menu = [
 ]
 
 socials = [
-    { name = "github", url = "https://github.com/youichi-uda", icon = "github" },
+    { name = "github", url = "https://github.com/abyo-software", icon = "github" },
 ]
 
 stylesheets = ["custom.css"]
