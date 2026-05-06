@@ -1,7 +1,7 @@
 +++
-title = "43% smaller than HyperLogLog: a Rust implementation of ExaLogLog"
+title = "Up to 43% less memory than HyperLogLog: a Rust implementation of ExaLogLog"
 date = 2026-05-06
-description = "ExaLogLog (Ertl 2024) reaches the same accuracy as HyperLogLog with 43% less memory. Today I'm releasing a from-scratch pure-Rust implementation, including both the packed and CAS-friendly variants, both estimators, and head-to-head benchmarks against a reference HyperLogLog. The first of a series of paper-to-crate releases from abyo-software."
+description = "ExaLogLog (Ertl 2024) reaches the same RMSE as 6-bit HyperLogLog with around 43% less memory. Today I'm releasing a from-scratch pure-Rust implementation, including both the packed and CAS-friendly variants, both estimators, and a reproducible bench harness."
 
 [taxonomies]
 tags = ["rust", "launch", "library", "cardinality", "algorithm"]
@@ -11,41 +11,67 @@ toc = true
 +++
 
 If you've ever run `SELECT COUNT(DISTINCT user_id)` on a stream of telemetry,
-you've probably leaned on HyperLogLog. It's been the standard distinct-counting
-sketch for fifteen years; Redis, ClickHouse, BigQuery, Snowflake, Elasticsearch,
-DuckDB, and Apache DataSketches all ship some flavor of it. The deal is simple:
-spend a kilobyte of register state per stream and recover the cardinality of
-arbitrary 64-bit datasets to within ~2% relative error.
+you've probably leaned on HyperLogLog. It's been the standard distinct-
+counting sketch since Flajolet's 2007 paper; Redis, ClickHouse, BigQuery,
+Snowflake, Elasticsearch, DuckDB, and Apache DataSketches all ship some
+flavor of it. The deal is simple: spend a couple of kilobytes of register
+state per stream and recover the cardinality of arbitrary datasets to
+within ~2% relative error.
 
-In early 2024, Otmar Ertl at Dynatrace Research [published a sketch][paper]
-that achieves the same accuracy with 43% less memory. The paper is rigorous
-— theory, experiments, a reference implementation in Java — but a year on
-there was no production-quality Rust implementation. So I wrote one. Today
-I'm releasing it as the [`exaloglog`][crate] crate.
+In early 2024, Otmar Ertl at Dynatrace Research [published][paper] a sketch
+that reaches the same RMSE as 6-bit HyperLogLog with around 43% less
+in-memory state. The paper is rigorous — theory, experiments, a reference
+implementation in Java — but a year later I couldn't find a pure-Rust
+implementation with both estimators, mergeability, serialization, and
+empirical accuracy validated against the paper's tables. So I wrote one.
+Today I'm releasing it as the [`exaloglog`][crate] crate.
 
-This post walks through what changed, why the math actually works, and what
-the implementation cost. It's also the launch announcement for the first
-non-Ferro library coming out of the abyo-software org. More on that at the
-end.
+This post walks through what changed, the core math, and what the
+implementation cost. It's also a sibling release to my main work on Ferro:
+ExaLogLog will land in FerroStream's distinct-count aggregations and
+FerroStash's log analytics, and there's a series of similar paper-to-crate
+releases queued up behind it. More on the roadmap at the end.
 
 [paper]: https://arxiv.org/abs/2402.13726
 [crate]: https://crates.io/crates/exaloglog
 
 ## The headline
 
-| Algorithm | Bytes for ~2% RMSE @ n = 10⁶ |
-| --- | ---: |
-| HyperLogLog (8-bit registers) | 4096 |
-| HyperLogLog (6-bit packed) | 3072 |
-| UltraLogLog (Ertl 2023) | 1056 |
-| **ExaLogLog (this crate)** | **1792** |
+From Table 2 of the [EDBT 2025 paper][edbt-pdf], all configurations
+tuned for around 2% RMSE at `n = 10⁶`:
 
-Theory predicts 43.4% savings (1 − MVP_ELL / MVP_HLL6 = 1 − 3.67 / 6.48);
-my empirical numbers track theory once you account for the discrete
-nature of the precision parameter `p = log₂(m)`. Either way, the savings
-are large enough to matter for storage planning. If you store sketches
-per-tenant and have a few thousand tenants, "kilobytes per sketch" turns
-into a real budget line.
+| Algorithm | In-memory bytes | Serialized bytes | Empirical RMSE |
+| --- | ---: | ---: | ---: |
+| HyperLogLog 8-bit (`p = 11`) | 2296 | 2088 | 2.29% |
+| HyperLogLog 6-bit packed (`p = 11`) | 1792 | 1577 | 2.29% |
+| HyperLogLog ML (`p = 10`) | 1416 ± 56 | 1067 ± 4 | 2.38% |
+| Compressed Probability Counting (`p = 10`) | 1416 ± 56 | **656 ± 4** | 2.38% |
+| UltraLogLog (Ertl 2023, `p = 10`) | 1056 | 1024 | 2.38% |
+| HyperLogLogLog (`p = 11`) | 1100 ± 13 | 898 ± 16 | 2.30% |
+| **ExaLogLog `(t=2, d=20, p=8)`** | **936** | 896 | 2.27% |
+
+[edbt-pdf]: https://www.openproceedings.org/2025/conf/edbt/paper-252.pdf
+
+Two things are worth pulling out:
+
+- **In-memory state**: ExaLogLog is the smallest at this RMSE target,
+  43% under HLL-6 packed and 48% under HLL-8.
+- **Serialized state**: Compressed Probability Counting (CPC) wins
+  at 656 bytes — but pays for it with a fairly expensive variable-length
+  encoding step at serialization time. ExaLogLog still beats every
+  algorithm whose serialized form is the dense register array.
+
+Asymptotically, the savings come from the memory-variance product
+(MVP) ratio: HLL-6 has MVP = 6.48, ExaLogLog at `d = 20` has MVP = 3.67.
+Same RMSE means same `MVP × storage`, so ELL needs 3.67 / 6.48 ≈ 57%
+of HLL-6's bits — the 43% reduction. In the discrete configurations of
+Table 2 the in-memory reduction lands at 48%; in my own 200-trial
+empirical search (where the RMSE-target rounds to a nearby `p`) it
+lands at ~42%. "Around 43% less in-memory state at the same RMSE" is
+the headline I'm comfortable defending.
+
+If you keep cardinality sketches per-tenant and have a few thousand
+tenants, that delta turns into a real budget line.
 
 ## What ExaLogLog is, in one paragraph
 
@@ -111,10 +137,13 @@ most recent observation."
 
 The paper presents two estimators. The martingale (HIP) estimator is
 incremental and trivially fast — every state-changing insert
-increments the running estimate by `1/μ` and adjusts `μ`. But it
-requires maintaining `μ` across every insert and breaks once you merge
-or deserialize a sketch. So you also need a maximum-likelihood
-estimator that works from the register state alone.
+increments the running estimate by `1/μ` and adjusts `μ`. The catch
+is that it lives entirely in auxiliary state alongside the registers:
+it cannot be recomputed from the register array alone, so once you
+merge two sketches (where the auxiliary state has no consistent
+meaning) or deserialize one (in this crate's wire format the auxiliary
+state isn't carried), you're stuck. So you also want a maximum-
+likelihood estimator that works from the register state alone.
 
 Algorithm 3 in the paper computes `(α, β_u)` coefficients of the
 log-likelihood, which has the simple shape
@@ -124,17 +153,17 @@ ln L = -(n/m) · α + Σ β_u · ln(1 - exp(-n / (m · 2^u)))
 ```
 
 Setting the derivative to zero gives the ML equation `g(y) = α` where
-`y = n/m`, and the paper devotes Algorithm 8 to a robust Newton's-method
-solver with a recursive product computation to avoid floating-point
-overflow.
+`y = n/m`, and the paper devotes Algorithm 8 to a robust Newton solver
+with a recursive product computation to avoid floating-point overflow.
 
 I shipped bisection in `log₂(y)` instead. It converges to f64 precision
-in under 200 iterations, sidesteps the overflow concerns by using
-`exp_m1` for the denominator, and the cost is dwarfed by per-element
-insert work for any realistic ingestion rate. Newton's method would be
-~10× faster for the estimate call, but estimate is a query-time
-operation; nobody calls it in a hot loop. (If your workload does, file
-an issue.)
+in under 200 iterations and sidesteps the overflow concerns by using
+`exp_m1` for the denominator. Newton would be substantially faster
+for the estimate call (the paper reports 5-7 iterations), but
+`estimate()` is a query-time operation, not on the per-insert hot
+path; for the workloads I'm targeting the call cost is in the noise.
+If you're calling `estimate()` thousands of times per second, file an
+issue and a Newton solver gets bumped up the list.
 
 ## A bug I caught with a sanity check
 
@@ -158,8 +187,8 @@ on the cardinality estimate is well below most sanity thresholds. The
 way to catch it is to grind theory invariants — `h(0) = 1/m`,
 `ω(0) = 1`, "`h` strictly decreases on every register transition the
 insert algorithm produces" — and turn each one into a test that runs
-on every build. The repo has eight such property tests; they're cheap
-insurance and they paid out before the code shipped.
+on every build. The repo has a handful of such property tests; they're
+cheap insurance and they paid out before the code shipped.
 
 ## Two variants, two tradeoffs
 
@@ -186,23 +215,25 @@ have needed two patches, and divergence over time is inevitable.
 
 ## Throughput
 
-Single-threaded scalar code, on a recent x86_64 Linux machine:
+Single-threaded scalar code, criterion bench on a recent x86_64 Linux
+machine; reproducible via `cargo bench --bench insert` from the
+[repo][gh]:
 
 | variant | `p = 8` | `p = 12` | `p = 16` |
 | --- | ---: | ---: | ---: |
-| `ExaLogLog` (packed) | 101 M ins/s | 46 M ins/s | 39 M ins/s |
-| `ExaLogLogFast` (aligned) | 146 M ins/s | 53 M ins/s | 45 M ins/s |
+| `ExaLogLog` (packed) | 101 M inserts/s | 46 M inserts/s | 39 M inserts/s |
+| `ExaLogLogFast` (aligned) | 146 M inserts/s | 53 M inserts/s | 45 M inserts/s |
 
-For comparison, my reference HLL implementation in the same harness
-hits ~100 M ins/s — ExaLogLog is in the same throughput regime
-despite doing strictly more bookkeeping per insert. The drop from 146
-to 39 M ins/s as `p` grows from 8 to 16 is cache-bound: at `p = 16`,
-the register array is 64 KB and falls out of L1.
+A reference HLL implementation in the same harness hits ~100 M
+inserts/s; ExaLogLog is in the same regime despite doing strictly
+more bookkeeping per insert. The drop as `p` grows is cache-bound:
+at `p = 16` the register array is 64 KB and falls out of L1.
 
-A SIMD-accelerated batch-insert path is on the v0.2 list. Random-access
-register updates limit the win — gather/scatter is needed, and AVX-512
-is the only reasonable target — so I'd rather ship correct scalar code
-now and verify I'm not breaking accuracy with the SIMD version later.
+A SIMD-accelerated batch-insert path is on the v0.2 list. The
+random-access register updates cap the win — gather/scatter is
+needed and AVX-512 is the only reasonable target — so I'd rather
+ship correct scalar code now and verify I'm not breaking accuracy
+with the SIMD version later.
 
 ## Using it
 
@@ -226,28 +257,25 @@ or deserialization.
 ## What I'm doing next
 
 ExaLogLog is the first in a series of paper-to-crate releases I'm
-shipping through the [`abyo-software`][abyo] organization. The bet is
-that LLM-assisted engineering has dropped the cost of going from
-"rigorously-described algorithm in a paper" to "production-quality
-crate" by an order of magnitude. ExaLogLog took two days end-to-end
-including the writeup you're reading. The next ones — RaBitQ for
-vector quantization, Ribbon + InfiniFilter for filters, Eg-walker
-CRDTs, ChalametPIR for private search, BMP + Seismic for learned
-sparse retrieval — are queued up.
+shipping through the [`abyo-software`][abyo] organization. The next
+ones queued up are RaBitQ for vector quantization, Ribbon +
+InfiniFilter for approximate-membership filters, Eg-walker CRDTs,
+ChalametPIR for private information retrieval, and BMP + Seismic for
+learned sparse retrieval. Where it makes sense each will also land
+inside Ferro: RaBitQ and BMP feed FerroSearch's vector and learned-
+sparse paths, ExaLogLog joins FerroStream and FerroStash, ChalametPIR
+unlocks the private-search use case.
 
-Each of these will, where it makes sense, also feed back into Ferro:
-RaBitQ and BMP are FerroSearch's vector and learned-sparse paths;
-ExaLogLog will land in FerroStream's distinct-count aggregations and
-in FerroStash's log analytics; ChalametPIR is what makes private
-search a real product. The piece I want to put on the table is that
-the cost structure for "do this paper from scratch in production-
-quality Rust" has changed. Two days, not two months. The implications
-take a while to sink in.
+ExaLogLog took roughly two engineer-days end to end including the
+writeup. I don't want to overgeneralize from one data point, but
+mining the recent distributed-systems literature for papers with
+rigorous theory and a reference implementation that nobody can
+deploy in production looks like a high-yield activity right now.
 
-If you were already reaching for HyperLogLog, switching to ExaLogLog
-is a pure win. Source on [GitHub][gh]. Crate on [crates.io][crate].
-Docs on [docs.rs][docs]. Issues, benchmarks against your own
-workloads, and PRs welcome.
+If you're already reaching for HyperLogLog, ExaLogLog is worth a
+look — especially if you're storage-constrained per-sketch. Source
+on [GitHub][gh]. Crate on [crates.io][crate]. Docs on [docs.rs][docs].
+Issues, benchmarks against your own workloads, and PRs welcome.
 
 [abyo]: https://github.com/abyo-software
 [gh]: https://github.com/abyo-software/exaloglog-rs
