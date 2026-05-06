@@ -221,18 +221,19 @@ have needed two patches, and divergence over time is inevitable.
 
 The dense register array at `p = 12` takes 14 KB. If you're keeping
 sketches per-tenant and most tenants only have ten distinct items,
-that 14 KB is mostly zero registers. The packed `ExaLogLog` starts in
+that 14 KB is mostly zero registers. Both variants start in
 **sparse mode** — a sorted list of 32-bit hash tokens (paper §4.3) —
-and auto-promotes to the dense array when distinct elements cross
-`m · 7/8`, the count at which the sparse list equals the dense array
-in size.
+and auto-promote to the dense array at the per-variant break-even
+point.
 
 For 100 distinct items at `p = 12`, sparse mode uses ~424 bytes vs
 the dense 14336 — about 33× smaller. Below break-even, the ML
 estimator is *exact*: the token set IS the data, no statistical
 inference involved. Above break-even the dense estimator takes over
-and storage is fixed. `ExaLogLog::new_dense(p)` skips sparse mode if
-you know `n` will be large.
+and storage is fixed. `new_dense(p)` skips sparse mode if you know
+`n` will be large, or if you need to start handing the sketch out to
+multiple threads for `add_hash_atomic` (sparse storage is `Vec`-
+backed and can't be safely shared via `&self`).
 
 ### Reducing precision after the fact
 
@@ -285,9 +286,12 @@ The API closely mirrors what you'd expect from a HyperLogLog crate.
 `add(&T)` for any `Hash` value, `add_hash(u64)` if you've already
 hashed (use this with a fast hasher like xxhash3 or wyhash if hashing
 is your bottleneck), `merge(&other)` to union two sketches, and
-`to_bytes()` / `from_bytes()` for transport. Both the ML and the
-martingale (HIP) estimators are available; `estimate()` defaults to
-ML, which is the one you want after merges or deserialization.
+`to_bytes()` / `from_bytes()` for transport. With `--features serde`
+you also get `Serialize` / `Deserialize` impls that go through the
+same byte format, so JSON, MessagePack, bincode, and CBOR work
+without re-encoding. Both the ML and the martingale (HIP) estimators
+are available; `estimate()` defaults to ML, which is the one you
+want after merges or deserialization.
 
 ## What I'm doing next
 
