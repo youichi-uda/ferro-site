@@ -165,6 +165,21 @@ path; for the workloads I'm targeting the call cost is in the noise.
 If you're calling `estimate()` thousands of times per second, file an
 issue and a Newton solver gets bumped up the list.
 
+## Bit-for-bit parity with the Java reference
+
+For correctness validation, "the empirical RMSE matches theory" is good
+but indirect. The strongest possible test is **byte-for-byte register
+state equality with the paper's authoritative implementation**. The
+crate ships an integration test, `tests/java_parity.rs`, that does
+exactly this: 18 fixtures captured from Dynatrace's Java reference
+(`dynatrace-research/exaloglog-paper`) covering `d ∈ {20, 24}`,
+`p ∈ {4, 8, 12}`, `n ∈ {100, 1000, 10000}`, all asserting that after
+inserting `splitmix64(0..n)` the Rust register array is identical to
+Java's `getState()`.
+
+It is. Every byte. The capture procedure is in `notes/java-parity.md`
+and can be re-run when the Java reference bumps.
+
 ## A bug I caught with a sanity check
 
 My first pass through Algorithm 3 was wrong. Section 3.3 of the paper
