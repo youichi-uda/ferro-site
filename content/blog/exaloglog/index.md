@@ -156,14 +156,15 @@ Setting the derivative to zero gives the ML equation `g(y) = α` where
 `y = n/m`, and the paper devotes Algorithm 8 to a robust Newton solver
 with a recursive product computation to avoid floating-point overflow.
 
-I shipped bisection in `log₂(y)` instead. It converges to f64 precision
-in under 200 iterations and sidesteps the overflow concerns by using
-`exp_m1` for the denominator. Newton would be substantially faster
-for the estimate call (the paper reports 5-7 iterations), but
-`estimate()` is a query-time operation, not on the per-insert hot
-path; for the workloads I'm targeting the call cost is in the noise.
-If you're calling `estimate()` thousands of times per second, file an
-issue and a Newton solver gets bumped up the list.
+The crate ships both. `estimate_ml` routes through Newton's method by
+default, with bisection as a numerical-failure fallback. The Newton
+implementation faithfully follows Algorithm 8 — including the
+recursive λ, η updates from Eq. 22 and 30 that let us evaluate
+`(1+x)^{2^l}` powers by repeated squaring instead of FP `powf`. (The
+first cut had the loop termination condition inverted; `φ ≥ x'`
+should be `φ ≤ x'`, per the sign of f(x) = α·2^{u_max}·x − φ(x).
+Bisection caught it because both estimators run on the same
+configurations in the test battery.)
 
 ## Bit-for-bit parity with the Java reference
 
